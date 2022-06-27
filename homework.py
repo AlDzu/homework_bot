@@ -48,7 +48,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(current_timestamp):
-    """Делает запрос к эндпоинту API-сервиса"""
+    """Делает запрос к эндпоинту API-сервиса."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     homework_statuses = requests.get(ENDPOINT, headers=HEADERS, params=params)
@@ -60,7 +60,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
-    """Проверяет ответ API на корректность"""
+    """Проверяет ответ API на корректность."""
     if not type(response['homeworks']) is dict \
             and response['current_date'] is not None:
         return response['homeworks']
@@ -69,7 +69,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Извлекает из информации статус работы"""
+    """Извлекает из информации статус работы."""
     homework_name = homework['homework_name']
     homework_status = homework['status']
 
@@ -83,7 +83,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """Проверяет доступность переменных окружения"""
+    """Проверяет доступность переменных окружения."""
     if PRACTICUM_TOKEN is not None \
             and TELEGRAM_TOKEN is not None \
             and TELEGRAM_CHAT_ID is not None:
