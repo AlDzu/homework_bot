@@ -137,7 +137,7 @@ def main():
                     current_timestamp = int(current_timestamp.timestamp())
                     response = get_api_answer(current_timestamp)
                 else:
-                    message = f'Неверный формат даты/времени {current_timestamp}'
+                    message = f'Проверить дату/время {current_timestamp}'
                     logging.error(message)
                     raise TypeError(message)
     # Не совсем уверен что так, проверяется что datetime перед передачей
