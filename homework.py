@@ -11,10 +11,9 @@ load_dotenv()
 
 log_folder_name = f'log-{datetime.today()}'
 os.mkdir(log_folder_name)
-# Сделать папку для складирования логов на момент запуска
-log_trek = __file__  # файлопуть
+log_trek = __file__
 log_trek = '/'.join(log_trek.split('/')[:-1])
-log_trek = f'{log_trek}/{log_folder_name}'  # ПапОчка для сохранения
+log_trek = f'{log_trek}/{log_folder_name}'
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
