@@ -56,24 +56,24 @@ def send_message(bot, message):
 
 def get_api_answer(current_timestamp):
     """Делает запрос к эндпоинту API-сервиса."""
-    if type(current_timestamp) is datetime:
-        current_timestamp = int(current_timestamp.timestamp())
-    else:
-        message = f'Неверный формат даты/времени {current_timestamp}'
-        logging.error(message)
-        raise RuntimeError(message)
-    # Не совсем уверен что так, но теперь педераётся и проверяется datetime
+    # Требуется передать целочисленное значение, иначе тесты не пускают.
+    # Проверка в main()
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+        if response.status_code != 200:
+            message = f'Неожиданный статус API {response.status_code}'
+            logging.error(message)
+            raise ConnectionError(message)
     except Exception as error:
         message = f'Сбой при запросе API: {error}, {response}'
         logging.error(message)
         raise error(message)
     else:
         response = response.json()
-        if 'error' in response.keys() or 'code' in response.keys():
+        print(response)
+        if 'error' in response or 'code' in response:
             message = f'Неожиданный ответ API {response}'
             logging.error(message)
             raise RuntimeError(message)
@@ -133,7 +133,14 @@ def main():
         while True:
             try:
                 current_timestamp = datetime.today() - timedelta(days=30)
-                response = get_api_answer(current_timestamp)
+                if type(current_timestamp) is datetime:
+                    current_timestamp = int(current_timestamp.timestamp())
+                    response = get_api_answer(current_timestamp)
+                else:
+                    message = f'Неверный формат даты/времени {current_timestamp}'
+                    logging.error(message)
+                    raise TypeError(message)
+    # Не совсем уверен что так, проверяется что datetime перед передачей
             except Exception as error:
                 message = f'Сбой в работе программы: {error}'
                 send_message(bot, message)
