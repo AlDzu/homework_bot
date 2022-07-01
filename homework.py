@@ -9,10 +9,17 @@ from telegram import Bot
 
 load_dotenv()
 
+log_folder_name = f'log-{datetime.today()}'
+os.mkdir(log_folder_name)
+# Сделать папку для складирования логов на момент запуска
+log_trek = __file__  # файлопуть
+log_trek = '/'.join(log_trek.split('/')[:-1])
+log_trek = f'{log_trek}/{log_folder_name}'  # ПапОчка для сохранения
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.DEBUG,
-    filename='main.log',
+    filename=f'{log_trek}/main.log',
     filemode='w'
 )
 
@@ -25,7 +32,7 @@ PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-RETRY_TIME = 600
+RETRY_TIME = 1
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -49,20 +56,35 @@ def send_message(bot, message):
 
 def get_api_answer(current_timestamp):
     """Делает запрос к эндпоинту API-сервиса."""
+    if type(current_timestamp) is datetime:
+        current_timestamp = int(current_timestamp.timestamp())
+    else:
+        message = f'Неверный формат даты/времени {current_timestamp}'
+        logging.error(message)
+        raise RuntimeError(message)
+    # Не совсем уверен что так, но теперь педераётся и проверяется datetime
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    homework_statuses = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    if homework_statuses.status_code != 200:
-        message = f'Сбой в работе программы: {homework_statuses.status_code}'
+    try:
+        response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    except Exception as error:
+        message = f'Сбой при запросе API: {error}, {response}'
         logging.error(message)
-        raise requests.ConnectionError(message)
-    return homework_statuses.json()
+        raise error(message)
+    else:
+        response = response.json()
+        if 'error' in response.keys() or 'code' in response.keys():
+            message = f'Неожиданный ответ API {response}'
+            logging.error(message)
+            raise RuntimeError(message)
+        else:
+            return response
 
 
 def check_response(response):
     """Проверяет ответ API на корректность."""
-    if not type(response['homeworks']) is dict \
-            and response['current_date'] is not None:
+    if (not type(response['homeworks']) is dict
+            and response['current_date'] is not None):
         return response['homeworks']
     else:
         logging.error(f'Неожиданный ответ API: {response}')
@@ -70,23 +92,23 @@ def check_response(response):
 
 def parse_status(homework):
     """Извлекает из информации статус работы."""
+    if 'status' not in homework.keys():
+        message = 'Неизвестный ключ вместо status'
+        logger.error(message)
+        raise KeyError(message)
     homework_name = homework['homework_name']
     homework_status = homework['status']
-
     try:
         verdict = HOMEWORK_STATUSES[homework_status]
     except Exception as error:
         logging.error(f'Неизвестный сатус работы: {error} {homework_status}')
         raise error
-
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
     """Проверяет доступность переменных окружения."""
-    if PRACTICUM_TOKEN is not None \
-            and TELEGRAM_TOKEN is not None \
-            and TELEGRAM_CHAT_ID is not None:
+    if all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]):
         return True
     else:
         return False
@@ -95,38 +117,49 @@ def check_tokens():
 def main():
     """Основная логика работы бота."""
     bot = Bot(token=TELEGRAM_TOKEN)
+    # Вот обратно затык с проверкой инициализации)
+    # Не совсем понимаю что необходимо сделать.
+    # Разве что тип содержимого проверить?
+    if (bot.id is int
+        and bot.username is str
+            and bot.first_name is str):
+        message = f'Что-то не так с ботом. Проверить данные: {bot}'
+        logging.error(message)
+        raise ValueError(message)
 
     status_last_hw_1 = 'reviewing'
     # При первом запуске считаем что работа проверяется
-
-    while True:
-        try:
-            current_timestamp = int(
-                (datetime.today() - timedelta(days=30)).timestamp()
-            )
-            response = get_api_answer(current_timestamp)
-            time.sleep(RETRY_TIME)
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            send_message(bot, message)
-            logging.error(message)
-            time.sleep(RETRY_TIME)
-        else:
-            if check_tokens():
+    if check_tokens():
+        while True:
+            try:
+                current_timestamp = datetime.today() - timedelta(days=30)
+                response = get_api_answer(current_timestamp)
+            except Exception as error:
+                message = f'Сбой в работе программы: {error}'
+                send_message(bot, message)
+                logging.error(message)
+            else:
+                # относится к try
+                # "Инструкция else выполняется в том случае, если исключения не
+                # было."
+                # https://pyneng.readthedocs.io/ru/old_chapter_order/book/06_control_structures/6_exceptions.html
+                # Или так делать не рекомендуется
                 homework = check_response(response)
                 status_last_hw = homework[0]['status']  # Текущий статус работы
                 message = parse_status(homework[0])
-            else:
-                message = 'Недостоверные значения исходных перменных!'
-                send_message(bot, message)
-                logging.critical(message)
-
-            if status_last_hw != status_last_hw_1:
-                logging.info(f'Сообщение "{message}" успешно отправлено!')
-                status_last_hw_1 = status_last_hw
-            else:
-                message = 'Статус работы не изменился'
-                logging.debug(message)
+                if status_last_hw != status_last_hw_1:
+                    send_message(bot, message)
+                    logging.info(f'Сообщение "{message}" успешно отправлено!')
+                    status_last_hw_1 = status_last_hw
+                else:
+                    message = 'Статус работы не изменился'
+                    logging.debug(message)
+            finally:
+                time.sleep(RETRY_TIME)
+    else:
+        message = 'Недостоверные значения исходных перменных!'
+        send_message(bot, message)
+        logging.critical(message)
 
 
 if __name__ == '__main__':
