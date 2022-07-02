@@ -55,14 +55,14 @@ def send_message(bot, message):
 
 def get_api_answer(current_timestamp):
     """Делает запрос к эндпоинту API-сервиса."""
-    # Если тип int и значение в промежутке от начала проекта до текущей даты,
+    # Если значение в промежутке от начала проекта до текущей даты,
     # то похоже на правду
-    if (not type(current_timestamp) is int
-            or current_timestamp < 1549962000
-            or current_timestamp > int(time.time())):
+
+    if (current_timestamp < 1549962000
+            or current_timestamp > time.time()):
         message = f'Проверить дату/время {current_timestamp}'
         logging.error(message)
-        raise TypeError(message)
+        raise ValueError(message)
 
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
