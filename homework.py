@@ -62,8 +62,10 @@ def get_api_answer(current_timestamp):
         message = f'Проверить дату/время {current_timestamp}'
         logging.error(message)
         raise TypeError(message)
+
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
+
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
         if response.status_code != 200:
@@ -74,11 +76,14 @@ def get_api_answer(current_timestamp):
         message = f'Сбой при запросе API: {error}, {response}'
         logging.error(message)
         raise error(message)
+
     response = response.json()
+
     if 'error' in response or 'code' in response:
         message = f'Неожиданный ответ API {response}'
         logging.error(message)
         raise RuntimeError(message)
+
     return response
 
 
@@ -99,11 +104,13 @@ def parse_status(homework):
         raise KeyError(message)
     homework_name = homework['homework_name']
     homework_status = homework['status']
+
     try:
         verdict = HOMEWORK_STATUSES[homework_status]
     except Exception as error:
         logging.error(f'Неизвестный сатус работы: {error} {homework_status}')
         raise error
+
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -124,17 +131,11 @@ def main():
         raise ValueError(message)
 
     bot_init = bot.get_me()
+
     if (bot_init['id'] != '/'.join(TELEGRAM_TOKEN.split('/')[:-1])
        and bot_init['is_bot'] is not True):
         message = f'Что-то не так с ботом: {bot_init}'
         send_message(bot, message)
-        logging.error(message)
-        raise ValueError(message)
-
-    if (bot.id is int
-        and bot.username is str
-            and bot.first_name is str):
-        message = f'Что-то не так с ботом. Проверить данные: {bot}'
         logging.error(message)
         raise ValueError(message)
 
