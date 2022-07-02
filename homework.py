@@ -31,7 +31,7 @@ PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-RETRY_TIME = 600
+RETRY_TIME = 6
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
@@ -58,8 +58,8 @@ def get_api_answer(current_timestamp):
     # Если тип int и значение в промежутке от начала проекта до текущей даты,
     # то похоже на правду
     if (not type(current_timestamp) is int
-            and current_timestamp < 1549962000
-            and current_timestamp > int(time.time())):
+            or current_timestamp < 1549962000
+            or current_timestamp > int(time.time())):
         message = f'Проверить дату/время {current_timestamp}'
         logging.error(message)
         raise TypeError(message)
